@@ -5,8 +5,8 @@ from bs4 import BeautifulSoup
 
 from aiogram.types import ReplyKeyboardMarkup
 
-# TOKEN = "6752614576:AAFLvb09hR2C5irvagqid_G_RCGTRT1EJtI"   - REAL TOKEN!    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-TOKEN = '6464104141:AAHho_UQyjrAhOZj_pxczR0oiQAdSpwx76w'
+TOKEN = "6752614576:AAFLvb09hR2C5irvagqid_G_RCGTRT1EJtI"  # - REAL TOKEN!    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 bot = Bot(TOKEN)
 dp = Dispatcher(bot)
 
