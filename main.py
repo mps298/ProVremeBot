@@ -4,10 +4,10 @@ import requests
 from bs4 import BeautifulSoup
 import datetime
 from aiogram.types import ReplyKeyboardMarkup
-
-TOKEN = "6752614576:AAFLvb09hR2C5irvagqid_G_RCGTRT1EJtI"
-
-bot = Bot(TOKEN)
+from dotenv import load_dotenv
+import os
+load_dotenv()
+bot = Bot(os.getenv('TOKEN'))
 dp = Dispatcher(bot)
 
 cities = {}
