@@ -2,27 +2,29 @@ from aiogram import types, Dispatcher, Bot
 import asyncio
 import requests
 from bs4 import BeautifulSoup
-
+import datetime
 from aiogram.types import ReplyKeyboardMarkup
 
-TOKEN = "6752614576:AAFLvb09hR2C5irvagqid_G_RCGTRT1EJtI"  # - REAL TOKEN!    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+TOKEN = "6752614576:AAFLvb09hR2C5irvagqid_G_RCGTRT1EJtI"
 
 bot = Bot(TOKEN)
 dp = Dispatcher(bot)
 
 cities = {}
+previous_searches = {}
 
 
-def get_keyboard(buttons_to_add, columns=3):
+def get_keyboard(buttons_to_add, main_city='', columns=3):
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
     counter = 1
-    keyboard.insert('Ljutomer')
-    keyboard.row()
+    if main_city in previous_searches.values() and main_city:
+        keyboard.insert(main_city.strip())
+        keyboard.row()
     for button in buttons_to_add:
         keyboard.insert(button)
         if not counter % columns:
             keyboard.row()
-
+        counter += 1
     return keyboard
 
 
@@ -48,20 +50,24 @@ def get_cities():
 async def start(message: types.Message) -> None:
     global cities
     cities = get_cities()
-
-    keyboard = get_keyboard(cities.keys())
-    await message.answer("Poiskal vam bom vremensko napoved, prosim izberite mesto", reply_markup=keyboard)
+    global previous_searches
+    main_city = ''
+    if message.chat.id in previous_searches:
+        main_city = previous_searches[message.chat.id]
+    keyboard = get_keyboard(buttons_to_add=cities.keys(), main_city=main_city)
+    await message.answer(text="Poiskal vam bom vremensko napoved, prosim izberite mesto", reply_markup=keyboard)
 
 
 @dp.message_handler(content_types='text')
 async def get_data(message: types.Message) -> None:
     global cities
-
-    if not message.text in cities.keys():
+    text = message.text.strip()
+    if not text in cities.keys():
         keyboard = get_keyboard(cities.keys())
-        await message.answer(f"Mesto {message.text} žal nisem našel, prosim preverite podatke", reply_markup=keyboard)
+        await message.answer(text=f"Mesto {text} žal nisem našel, prosim preverite podatke",
+                             reply_markup=keyboard)
     else:
-        citi_code = cities[message.text]
+        citi_code = cities[text]
         url = 'https://www.pro-vreme.net/index.php?id=2000&m=' + citi_code
 
         headers = {
@@ -76,6 +82,19 @@ async def get_data(message: types.Message) -> None:
         title_soup_2 = BeautifulSoup(str(title_soup), 'html.parser')
         titles = title_soup_2.find_all('span')
         title = 'Napoved za ' + titles[1].text
+
+        first_int_index = -1
+        for index, ch in enumerate(title):
+            if ch.isdigit():
+                first_int_index = index
+                break
+        date = datetime.date
+        if not first_int_index < 0:
+            day = int(title[first_int_index] + title[first_int_index + 1])
+            month = int(title[first_int_index + 3] + title[first_int_index + 4])
+            year = int(title[first_int_index + 6: first_int_index + 10])
+
+            date = datetime.date(year=year, month=month, day=day)
 
         all_days = soup.find_all('td', class_='prikaziDan')
         days = []
@@ -96,10 +115,6 @@ async def get_data(message: types.Message) -> None:
 
         for image in all_images:
             images.append('https://www.pro-vreme.net/' + image.get('src'))
-            print('https://www.pro-vreme.net/' + image.get('src'))
-
-            # print(image.text)
-            # images.append('pro-vreme.net/' + image.get('src'))
 
         all_temperatures = soup.find_all('td')
 
@@ -127,9 +142,15 @@ async def get_data(message: types.Message) -> None:
             await message.answer(title, reply_markup=types.ReplyKeyboardRemove())
             for i in range(len(links)):
                 await bot.send_photo(message.chat.id, images[i],
-                                     caption=days[i] + "\n" + "<b>" + temperatures_am[i] + " / " + temperatures_pm[i]
-                                             + f"</b>\n<a href='{links[i]}'>Podrobnosti</a>\n", parse_mode="html")
+                                     caption=days[i] + f", {date.day}.{date.month}\n" + "<b>" +
+                                             temperatures_am[i] + " / " + temperatures_pm[i] +
+                                             f"</b>\n<a href='{links[i]}'>Podrobnosti</a>\n", parse_mode="html")
                 i += 1
+                date = date + datetime.timedelta(days=1)
+
+            global previous_searches
+            previous_searches[message.chat.id] = text
+
 
 
 async def main():
